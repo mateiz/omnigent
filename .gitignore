@@ -3,6 +3,7 @@ build/
 dist/
 node_modules/
 reviews/
+scratch/
 
 # Generated artifact; never committed.
 .pytest_cache/

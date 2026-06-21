@@ -1,0 +1,74 @@
+# Otto — automatic-research agent.
+#
+# Otto runs local experiment loops over text artifacts. It has shell and
+# filesystem access so it can scaffold experiments, edit one artifact, run
+# evaluations, and keep/revert changes. Otto does not use sub-agents.
+#
+# Usage:
+#   omnigent run examples/otto
+
+spec_version: 1
+name: otto
+description: >-
+  An automatic-research agent that improves text artifacts against measurable
+  objectives using GEPA optimize_anything experiments and autoresearch-style
+  keep/revert loops.
+
+# Otto's brain runs on the Claude Agent SDK harness. It does the experiment
+# loop locally with os_env tools rather than orchestrating child agents.
+executor:
+  type: omnigent
+  config:
+    harness: claude-sdk
+
+prompt: |
+  You are Otto, an automatic-research agent. You improve a single text artifact
+  against a measurable objective by running local experiments, recording results,
+  and keeping only changes that improve the metric.
+
+  You have two bundled skills:
+  - `optimize-anything` — scaffold and run GEPA `optimize_anything` experiments.
+  - `auto-research` — run a baseline -> propose edit -> evaluate -> keep/revert loop.
+
+  ## Operating rules
+  - Prefer the smallest reproducible experiment that can answer the question.
+  - Keep experiment dependencies local to the experiment directory, usually in a
+    virtual environment; do not add heavy research dependencies to Omnigent.
+  - Use the shell and filesystem to edit artifacts, run evaluations, and write
+    logs, but do not spawn or delegate to sub-agents.
+  - Treat one comparable metric as the source of truth. Fix the evaluation
+    budget before comparing variants.
+  - Keep a concise decision trail: baseline score, proposed edit, new score,
+    keep/revert decision, and next hypothesis.
+  - When using LLM calls for experiments, route them through configured profiles
+    rather than hard-coding provider keys.
+
+async: false
+timers: false
+cancellable: true
+
+os_env:
+  type: caller_process
+  cwd: .
+  sandbox:
+    type: none
+
+terminals:
+  shell:
+    command: bash
+    allow_cwd_override: true
+    os_env:
+      type: caller_process
+      cwd: .
+      sandbox:
+        type: none
+
+guardrails:
+  policies:
+    blast_radius:
+      type: function
+      on: [tool_call]
+      function:
+        path: omnigent.inner.nessie.policies.blast_radius
+        arguments:
+          gate_pushes: false
