@@ -1,0 +1,162 @@
+[
+  {
+    "duration_s": 22.253610134124756,
+    "prompt_tokens": 1028,
+    "completion_tokens": 2086,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.022145000000000005,
+    "cost": 0.022145000000000005
+  },
+  {
+    "duration_s": 34.534674882888794,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3638,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.063055,
+    "cost": 0.063055
+  },
+  {
+    "duration_s": 28.289567947387695,
+    "prompt_tokens": 21340,
+    "completion_tokens": 2961,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.056285,
+    "cost": 0.056285
+  },
+  {
+    "duration_s": 29.226415157318115,
+    "prompt_tokens": 21340,
+    "completion_tokens": 2822,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.054895,
+    "cost": 0.054895
+  },
+  {
+    "duration_s": 31.025132417678833,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3258,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.059255,
+    "cost": 0.059255
+  },
+  {
+    "duration_s": 27.268406867980957,
+    "prompt_tokens": 21340,
+    "completion_tokens": 2956,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.056235,
+    "cost": 0.056235
+  },
+  {
+    "duration_s": 23.646892070770264,
+    "prompt_tokens": 21340,
+    "completion_tokens": 2694,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.053615,
+    "cost": 0.053615
+  },
+  {
+    "duration_s": 29.440117359161377,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3225,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.058925000000000005,
+    "cost": 0.058925000000000005
+  },
+  {
+    "duration_s": 27.351709604263306,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3143,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.058105000000000004,
+    "cost": 0.058105000000000004
+  },
+  {
+    "duration_s": 29.020965099334717,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3103,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.057705,
+    "cost": 0.057705
+  },
+  {
+    "duration_s": 25.788919925689697,
+    "prompt_tokens": 21340,
+    "completion_tokens": 2748,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.054155,
+    "cost": 0.054155
+  },
+  {
+    "duration_s": 26.61177134513855,
+    "prompt_tokens": 21340,
+    "completion_tokens": 2689,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.053565,
+    "cost": 0.053565
+  },
+  {
+    "duration_s": 34.84833478927612,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3602,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.062695,
+    "cost": 0.062695
+  },
+  {
+    "duration_s": 38.881019592285156,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3630,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.062975,
+    "cost": 0.062975
+  },
+  {
+    "duration_s": 36.00382471084595,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3737,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.064045,
+    "cost": 0.064045
+  },
+  {
+    "duration_s": 20.729984760284424,
+    "prompt_tokens": 21340,
+    "completion_tokens": 2663,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.053305000000000005,
+    "cost": 0.053305000000000005
+  },
+  {
+    "duration_s": 22.301437854766846,
+    "prompt_tokens": 21340,
+    "completion_tokens": 2563,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.052305000000000004,
+    "cost": 0.052305000000000004
+  },
+  {
+    "duration_s": 32.06947064399719,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3484,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.061515,
+    "cost": 0.061515
+  },
+  {
+    "duration_s": 24.808167934417725,
+    "prompt_tokens": 21340,
+    "completion_tokens": 2970,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.056375,
+    "cost": 0.056375
+  },
+  {
+    "duration_s": 24.335345029830933,
+    "prompt_tokens": 21340,
+    "completion_tokens": 3153,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.05820500000000001,
+    "cost": 0.05820500000000001
+  }
+]

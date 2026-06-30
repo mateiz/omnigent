@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEPA Candidate Tree</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8f9fa; display: flex; flex-direction: column; }
+  #header { background: #fff; border-bottom: 1px solid #dee2e6; padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+  #header h1 { font-size: 18px; font-weight: 600; color: #212529; }
+  .legend { display: flex; gap: 14px; font-size: 13px; color: #495057; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #adb5bd; }
+  #graph-container { flex: 1 1 auto; width: 100%; overflow: auto; padding: 20px; text-align: center; }
+  #graph-container svg { width: 100%; height: 100%; }
+  #tooltip {
+    display: none; position: fixed; background: #fff; border: 1px solid #dee2e6;
+    border-radius: 8px; padding: 14px 16px; max-width: 560px; max-height: 70vh; overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18); z-index: 1000; font-size: 13px; line-height: 1.5;
+  }
+  #tooltip .tt-header { font-weight: 700; font-size: 15px; margin-bottom: 6px; color: #212529; }
+  #tooltip .tt-meta { color: #6c757d; margin-bottom: 4px; }
+  #tooltip .tt-hint { color: #adb5bd; font-size: 11px; font-style: italic; margin-bottom: 10px; }
+  #tooltip .tt-comp-name { font-weight: 600; color: #495057; margin-top: 10px; border-bottom: 1px solid #e9ecef; padding-bottom: 2px; }
+  #tooltip .tt-comp-text {
+    white-space: pre-wrap; word-break: break-word; background: #f8f9fa;
+    border: 1px solid #e9ecef; border-radius: 4px; padding: 8px 10px; margin-top: 4px;
+    font-family: "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+    max-height: 200px; overflow-y: auto;
+  }
+  .role-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+  .role-best { background: #00e5ff33; color: #006064; }
+  .role-pareto { background: #ff980033; color: #e65100; }
+  .role-seed { background: #e0e0e0; color: #424242; }
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>GEPA Candidate Tree</h1>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:cyan"></div> Best</div>
+    <div class="legend-item"><div class="legend-dot" style="background:orange"></div> Pareto Front</div>
+    <div class="legend-item"><div class="legend-dot" style="background:lightgray"></div> Other</div>
+  </div>
+</div>
+<div id="graph-container"><p>Loading graph&hellip;</p></div>
+<div id="tooltip"></div>
+
+<script type="module">
+const NODES = [{"idx": 0, "score": -151.2526, "parents": "seed", "role": "Seed", "components": {"current_candidate": "\nimport numpy as np\n\ndef solve(objective_function, config, best_xs=None):\n    bounds = np.array(config['bounds'])\n    all_attempts = []\n\n    x = np.random.uniform(bounds[:, 0], bounds[:, 1])\n    score = objective_function(x)\n    all_attempts.append({\"x\": x.copy(), \"score\": score})\n\n    return {\"x\": x, \"score\": score, \"all_attempts\": all_attempts}\n"}},
+{"idx": 1, "score": 100.0, "parents": "0", "role": "Best", "components": {"current_candidate": "import numpy as np\nfrom scipy.optimize import minimize\nfrom scipy.spatial.distance import cdist\n\ndef solve(objective_function, config, best_xs=None):\n    bounds = np.array(config['bounds'], dtype=float)\n    dim = int(config.get('dim', bounds.shape[0]))\n    budget = int(config.get('budget', 100))\n    low, high = bounds[:, 0], bounds[:, 1]\n\n    rng = np.random.default_rng()\n    all_attempts = []\n\n    def clip(x):\n        return np.clip(x, low, high)\n\n    def eval_x(x):\n        x = np.asarray(x, dtype=float)\n        x = clip(x)\n        score = float(objective_function(x))\n        all_attempts.append({\"x\": x.copy(), \"score\": score})\n        return score\n\n    # Incorporate previous attempts if provided (these don't count against current budget)\n    prev_points = []\n    if best_xs:\n        for item in best_xs:\n            x = np.asarray(item[\"x\"], dtype=float)\n            s = float(item[\"score\"])\n            prev_points.append((x, s))\n    # We'll also keep a working list of known points for local modeling\n    known_X = [x for x, _ in prev_points]\n    known_y = [s for _, s in prev_points]\n\n    # Helper: select diverse seeds from known good points + random LHS\n    def latin_hypercube(n_samples, dim, low, high):\n        # Standard LHS in [0,1]^d then scale\n        cut = np.linspace(0, 1, n_samples + 1)\n        u = rng.uniform(size=(n_samples, dim))\n        a = cut[:n_samples]\n        b = cut[1:n_samples + 1]\n        rdpoints = u * (b - a)[:, None] + a[:, None]\n        for j in range(dim):\n            rng.shuffle(rdpoints[:, j])\n        return low + rdpoints * (high - low)\n\n    # Determine number of starts and local steps based on budget\n    # Reserve some for random/global exploration, some for local refinement\n    min_evals_for_local = 5  # to try at least a small local search\n    if budget <= 0:\n        # No budget to evaluate; return best previous if any, else center\n        if prev_points:\n            best_prev = min(prev_points, key=lambda t: t[1])\n            return {\"x\": best_prev[0], \"score\": best_prev[1], \"all_attempts\": []}\n        x0 = (low + high) / 2.0\n        return {\"x\": x0, \"score\": float(\"inf\"), \"all_attempts\": []}\n\n    # Start with best known point if available; otherwise sample a point\n    if prev_points:\n        best_prev_x, best_prev_s = min(prev_points, key=lambda t: t[1])\n        best_x = best_prev_x.copy()\n        best_s = best_prev_s\n    else:\n        x0 = rng.uniform(low, high)\n        s0 = eval_x(x0)\n        best_x, best_s = x0.copy(), s0\n\n    # Compute remaining budget\n    remaining = budget - len(all_attempts)\n    if remaining <= 0:\n        return {\"x\": best_x, \"score\": best_s, \"all_attempts\": all_attempts}\n\n    # Seed pool: top-K from prev + LHS\n    seeds = []\n    if prev_points:\n        # Take top-k diverse previous points\n        k = max(1, min(8, int(np.sqrt(remaining)) ))\n        prev_sorted = sorted(prev_points, key=lambda t: t[1])[:min(len(prev_points), 50)]\n        # Greedy diversity by distance\n        selected = []\n        for x, s in prev_sorted:\n            if not selected:\n                selected.append((x, s))\n            else:\n                dists = cdist([x], [p[0] for p in selected])[0]\n                if np.all(dists > 1e-6 * np.linalg.norm(high - low) + 1e-9):\n                    selected.append((x, s))\n            if len(selected) >= k:\n                break\n        seeds.extend([x for x, _ in selected])\n    # Add LHS samples\n    n_lhs = max(0, min(remaining // 3, 10))\n    if n_lhs > 0:\n        lhs = latin_hypercube(n_lhs, dim, low, high)\n        seeds.extend([lhs[i] for i in range(n_lhs)])\n\n    # Ensure we have at least one seed\n    if not seeds:\n        seeds = [rng.uniform(low, high)]\n\n    # Evaluate seeds (avoid duplicates of prev_points if same x)\n    # We'll keep a set of hashes to avoid exact duplicates\n    def x_hash(x):\n        return tuple(np.round(x, 12))\n    seen = set(x_hash(a[\"x\"]) for a in all_attempts)\n    for x in seeds:\n        if remaining <= 0:\n            break\n        h = x_hash(x)\n        if h in seen:\n            continue\n        s = eval_x(x)\n        seen.add(h)\n        remaining -= 1\n        if s < best_s:\n            best_x, best_s = x.copy(), s\n\n    if remaining <= 0:\n        return {\"x\": best_x, \"score\": best_s, \"all_attempts\": all_attempts}\n\n    # Local trust-region searches around a few best from observed (prev + new)\n    obs_X = [a[\"x\"] for a in all_attempts] + [x for x, _ in prev_points]\n    obs_y = [a[\"score\"] for a in all_attempts] + [s for _, s in prev_points]\n    order = np.argsort(obs_y)\n    sorted_X = [obs_X[i] for i in order][:min(5, len(order))]\n\n    # Trust-region parameters\n    # Scale relative to bounds\n    span = np.maximum(1e-12, high - low)\n    base_radius = 0.25 * span  # initial radius\n    min_radius = 1e-3 * span\n\n    def local_search(x0, steps_budget):\n        nonlocal best_x, best_s, remaining\n        x = x0.copy()\n        radius = base_radius.copy()\n        # Simple pattern search within trust region\n        directions = np.eye(dim)\n        while steps_budget > 0 and remaining > 0:\n            improved = False\n            for sign in [+1.0, -1.0]:\n                for d in directions:\n                    if steps_budget <= 0 or remaining <= 0:\n                        break\n                    candidate = clip(x + sign * radius * d)\n                    h = x_hash(candidate)\n                    if h in seen:\n                        continue\n                    s = eval_x(candidate)\n                    seen.add(h)\n                    remaining -= 1\n                    steps_budget -= 1\n                    if s < best_s:\n                        best_x, best_s = candidate.copy(), s\n                    if s < eval_x.cache.get(x_hash(x), np.inf):\n                        x = candidate\n                        eval_x.cache[x_hash(x)] = s\n                        improved = True\n                if steps_budget <= 0 or remaining <= 0:\n                    break\n            if not improved:\n                # shrink radius\n                radius = np.maximum(min_radius, 0.5 * radius)\n                # If minimal radius reached, stop\n                if np.allclose(radius, min_radius):\n                    break\n        return\n\n    # cache to store known score for a point during local search decisions\n    eval_x.cache = {}\n    for a in all_attempts:\n        eval_x.cache[x_hash(a[\"x\"])] = a[\"score\"]\n    for x, s in prev_points:\n        eval_x.cache[x_hash(x)] = s\n\n    # Allocate remaining between local searches and global random exploration\n    n_locals = min(len(sorted_X), max(1, remaining // 10))\n    steps_per_local = max(2, remaining // max(1, n_locals + 1))\n\n    for i in range(n_locals):\n        if remaining <= 0:\n            break\n        local_search(sorted_X[i], steps_per_local)\n\n    if remaining <= 0:\n        return {\"x\": best_x, \"score\": best_s, \"all_attempts\": all_attempts}\n\n    # Final global exploration: random + perturb around best\n    # Mix of Latin hypercube and Gaussian perturbations\n    n_global = remaining\n    n_gauss = n_global // 2\n    n_rand = n_global - n_gauss\n\n    # Gaussian around top few points\n    topX = sorted_X if sorted_X else [best_x]\n    cov = np.diag((0.1 * span) ** 2)\n    for i in range(n_gauss):\n        base = topX[i % len(topX)]\n        cand = rng.multivariate_normal(mean=base, cov=cov)\n        cand = clip(cand)\n        h = x_hash(cand)\n        if h in seen:\n            continue\n        s = eval_x(cand)\n        seen.add(h)\n        remaining -= 1\n        if s < best_s:\n            best_x, best_s = cand.copy(), s\n        if remaining <= 0:\n            break\n\n    # Uniform random for the rest\n    for _ in range(max(0, remaining)):\n        cand = rng.uniform(low, high)\n        h = x_hash(cand)\n        if h in seen:\n            continue\n        s = eval_x(cand)\n        seen.add(h)\n        remaining -= 1\n        if s < best_s:\n            best_x, best_s = cand.copy(), s\n        if remaining <= 0:\n            break\n\n    return {\"x\": best_x, \"score\": best_s, \"all_attempts\": all_attempts}"}}];
+const DOT = `digraph G {
+    rankdir=TB;
+    node [style=filled, shape=circle, fontsize=14, width=0.6, height=0.6];
+    0 [label="0\\n(-151.25)", fillcolor=lightgray, tooltip=" "];
+    1 [label="1\\n(100.00)", fillcolor=cyan, tooltip=" "];
+    0 -> 1;
+}`;
+
+const nodeMap = {};
+NODES.forEach(n => { nodeMap[n.idx] = n; });
+
+let pinnedIdx = null;   // non-null when tooltip is click-pinned (scrollable)
+let hoverIdx = null;    // non-null when hovering over a node
+
+function renderTooltip(idx) {
+  const n = nodeMap[idx];
+  if (!n) return "";
+  let roleBadge = "";
+  if (n.role === "Best") roleBadge = '<span class="role-badge role-best">BEST</span>';
+  else if (n.role === "Pareto Front") roleBadge = '<span class="role-badge role-pareto">PARETO</span>';
+  else if (n.role === "Seed") roleBadge = '<span class="role-badge role-seed">SEED</span>';
+
+  let comps = "";
+  for (const [name, text] of Object.entries(n.components)) {
+    const escaped = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    comps += '<div class="tt-comp-name">' + name + '</div><div class="tt-comp-text">' + escaped + '</div>';
+  }
+
+  return '<div class="tt-header">Candidate ' + n.idx + roleBadge + '</div>' +
+    '<div class="tt-meta">Score: <strong>' + n.score + '</strong>&nbsp;&nbsp;|&nbsp;&nbsp;Parent(s): ' + n.parents +
+    '</div><div class="tt-hint">' + (pinnedIdx === idx ? 'Click node again to dismiss' : 'Click to pin &amp; scroll') + '</div>' +
+    comps;
+}
+
+function positionTooltip(x, y) {
+  const tt = document.getElementById("tooltip");
+  let tx = x + 16, ty = y + 16;
+  const r = tt.getBoundingClientRect();
+  if (tx + r.width > window.innerWidth - 8) tx = x - r.width - 16;
+  if (ty + r.height > window.innerHeight - 8) ty = y - r.height - 16;
+  if (tx < 8) tx = 8;
+  if (ty < 8) ty = 8;
+  tt.style.left = tx + "px";
+  tt.style.top = ty + "px";
+}
+
+function showTooltip(idx, x, y) {
+  const tt = document.getElementById("tooltip");
+  tt.innerHTML = renderTooltip(idx);
+  tt.style.display = "block";
+  positionTooltip(x, y);
+}
+
+function hideTooltip() {
+  pinnedIdx = null;
+  hoverIdx = null;
+  document.getElementById("tooltip").style.display = "none";
+}
+
+// Click outside tooltip and outside nodes dismisses pinned tooltip
+document.addEventListener("mousedown", function(e) {
+  const tt = document.getElementById("tooltip");
+  if (pinnedIdx !== null && tt.style.display === "block"
+      && !tt.contains(e.target) && !e.target.closest(".node")) {
+    hideTooltip();
+  }
+});
+
+async function render() {
+  const { instance } = await import("https://cdn.jsdelivr.net/npm/@viz-js/viz@3.11.0/lib/viz-standalone.mjs");
+  const viz = await instance();
+  const svg = viz.renderSVGElement(DOT);
+  const container = document.getElementById("graph-container");
+  container.innerHTML = "";
+  container.appendChild(svg);
+
+  // Attach hover listeners and strip native <title> tooltips to avoid double tooltips
+  svg.querySelectorAll(".node").forEach(node => {
+    const title = node.querySelector("title");
+    if (!title) return;
+    const idx = parseInt(title.textContent, 10);
+    if (isNaN(idx)) return;
+    title.remove();  // remove native SVG tooltip
+    node.style.cursor = "pointer";
+    // Hover: show tooltip following the mouse (non-interactive)
+    node.addEventListener("mouseenter", e => {
+      if (pinnedIdx !== null) return;  // don't override a pinned tooltip
+      hoverIdx = idx;
+      showTooltip(idx, e.clientX, e.clientY);
+    });
+    node.addEventListener("mousemove", e => {
+      if (pinnedIdx !== null || hoverIdx !== idx) return;
+      positionTooltip(e.clientX, e.clientY);
+    });
+    node.addEventListener("mouseleave", () => {
+      if (pinnedIdx !== null) return;
+      hoverIdx = null;
+      document.getElementById("tooltip").style.display = "none";
+    });
+    // Click: pin the tooltip so user can scroll it
+    node.addEventListener("click", e => {
+      e.stopPropagation();
+      if (pinnedIdx === idx) { hideTooltip(); return; }
+      pinnedIdx = idx;
+      showTooltip(idx, e.clientX, e.clientY);
+    });
+  });
+  // Also strip <title> from edges and the graph itself
+  svg.querySelectorAll(".edge title").forEach(t => t.remove());
+  const graphTitle = svg.querySelector(":scope > title");
+  if (graphTitle) graphTitle.remove();
+}
+
+render().catch(err => {
+  document.getElementById("graph-container").innerHTML =
+    "<p style='color:red'>Failed to render graph: " + err.message + "</p>" +
+    "<pre>" + DOT.replace(/</g,"&lt;") + "</pre>";
+});
+</script>
+</body>
+</html>
