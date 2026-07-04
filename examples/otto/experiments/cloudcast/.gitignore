@@ -1,0 +1,10 @@
+# GEPA internal state / bulky logs — keep results.json, best_program.py,
+# reflection_calls.json, config.json, run.log committed for proof.
+outputs/**/gepa_state.bin
+outputs/**/fitness_cache/
+outputs/**/generated_best_outputs_valset/
+outputs/**/run_log.txt
+outputs/**/run_log_stderr.txt
+outputs/**/*.console.log
+__pycache__/
+*.pyc

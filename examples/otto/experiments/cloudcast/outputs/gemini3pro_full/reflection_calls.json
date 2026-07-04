@@ -1,0 +1,156 @@
+[
+  {
+    "duration_s": 31.112,
+    "prompt_tokens": 3506,
+    "completion_tokens": 1257,
+    "total_tokens": 7530,
+    "output_billed_tokens": 4024,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.055299999999999995,
+    "cost": 0.055299999999999995,
+    "cumulative_cost": 0.0553
+  },
+  {
+    "duration_s": 13.782,
+    "prompt_tokens": 5724,
+    "completion_tokens": 1271,
+    "total_tokens": 7711,
+    "output_billed_tokens": 1987,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.035292000000000004,
+    "cost": 0.035292000000000004,
+    "cumulative_cost": 0.090592
+  },
+  {
+    "duration_s": 28.578,
+    "prompt_tokens": 5657,
+    "completion_tokens": 1309,
+    "total_tokens": 9619,
+    "output_billed_tokens": 3962,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.058858,
+    "cost": 0.058858,
+    "cumulative_cost": 0.14945
+  },
+  {
+    "duration_s": 15.215,
+    "prompt_tokens": 5652,
+    "completion_tokens": 1276,
+    "total_tokens": 7826,
+    "output_billed_tokens": 2174,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.037392,
+    "cost": 0.037392,
+    "cumulative_cost": 0.186842
+  },
+  {
+    "duration_s": 19.815,
+    "prompt_tokens": 5632,
+    "completion_tokens": 1130,
+    "total_tokens": 8378,
+    "output_billed_tokens": 2746,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.044216000000000005,
+    "cost": 0.044216000000000005,
+    "cumulative_cost": 0.231058
+  },
+  {
+    "duration_s": 13.512,
+    "prompt_tokens": 3644,
+    "completion_tokens": 896,
+    "total_tokens": 5497,
+    "output_billed_tokens": 1853,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.029523999999999998,
+    "cost": 0.029523999999999998,
+    "cumulative_cost": 0.260582
+  },
+  {
+    "duration_s": 29.117,
+    "prompt_tokens": 5367,
+    "completion_tokens": 977,
+    "total_tokens": 9282,
+    "output_billed_tokens": 3915,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.057714,
+    "cost": 0.057714,
+    "cumulative_cost": 0.318296
+  },
+  {
+    "duration_s": 16.948,
+    "prompt_tokens": 6154,
+    "completion_tokens": 1287,
+    "total_tokens": 8607,
+    "output_billed_tokens": 2453,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.041743999999999996,
+    "cost": 0.041743999999999996,
+    "cumulative_cost": 0.36004
+  },
+  {
+    "duration_s": 23.673,
+    "prompt_tokens": 5609,
+    "completion_tokens": 1263,
+    "total_tokens": 8955,
+    "output_billed_tokens": 3346,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.05137,
+    "cost": 0.05137,
+    "cumulative_cost": 0.41141
+  },
+  {
+    "duration_s": 23.526,
+    "prompt_tokens": 5670,
+    "completion_tokens": 1206,
+    "total_tokens": 9107,
+    "output_billed_tokens": 3437,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.052584000000000006,
+    "cost": 0.052584000000000006,
+    "cumulative_cost": 0.463994
+  },
+  {
+    "duration_s": 15.104,
+    "prompt_tokens": 5634,
+    "completion_tokens": 1275,
+    "total_tokens": 7791,
+    "output_billed_tokens": 2157,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.037152000000000004,
+    "cost": 0.037152000000000004,
+    "cumulative_cost": 0.501146
+  },
+  {
+    "duration_s": 17.626,
+    "prompt_tokens": 5885,
+    "completion_tokens": 931,
+    "total_tokens": 8449,
+    "output_billed_tokens": 2564,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.04253799999999999,
+    "cost": 0.04253799999999999,
+    "cumulative_cost": 0.543684
+  },
+  {
+    "duration_s": 13.398,
+    "prompt_tokens": 3465,
+    "completion_tokens": 776,
+    "total_tokens": 5238,
+    "output_billed_tokens": 1773,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.028206000000000002,
+    "cost": 0.028206000000000002,
+    "cumulative_cost": 0.57189
+  },
+  {
+    "duration_s": 18.436,
+    "prompt_tokens": 6154,
+    "completion_tokens": 1294,
+    "total_tokens": 8753,
+    "output_billed_tokens": 2599,
+    "metered_cost": 0.0,
+    "estimated_cost": 0.043496,
+    "cost": 0.043496,
+    "cumulative_cost": 0.615386
+  }
+]

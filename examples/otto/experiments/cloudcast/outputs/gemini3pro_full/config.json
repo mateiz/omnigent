@@ -1,0 +1,32 @@
+{
+  "example": "CloudCast (GEPA optimize_anything, Generalization mode)",
+  "provenance": {
+    "config": "scratch/gepa/examples/adrs/cloudcast/main.py",
+    "blog_snippet": "scratch/gepa/docs/docs/blog/posts/2026-02-18-introducing-optimize-anything/appendix/appendix-d-cloudcast.snippet"
+  },
+  "reflection_model_blog": "gemini-3-pro-preview",
+  "reflection_model_gateway": "databricks/databricks-gemini-3-pro",
+  "databricks_host": "https://ai-oss-ecosystem-integration-testing.cloud.databricks.com",
+  "max_metric_calls": 100,
+  "reflection_minibatch_size": 3,
+  "skip_perfect_score": false,
+  "seed": 0,
+  "num_configs": 5,
+  "configs": [
+    "intra_aws",
+    "intra_azure",
+    "intra_gcp",
+    "inter_agz",
+    "inter_gaz2"
+  ],
+  "objective_score": "1 / (1 + total_cost)  (higher is better)",
+  "seed_baseline_mean_score": 0.0052,
+  "seed_baseline_mean_cost_usd": 209.1721,
+  "hard_budget_usd": 500.0,
+  "projection": {
+    "assumed_cost_per_proposer_call_usd": 0.3,
+    "worst_case_proposer_calls_upper_bound": 100,
+    "worst_case_projected_spend_usd": 30.0,
+    "note": "Upper bound assumes every metric call were an LLM call, which it is not (objective evals are pure simulator). Real proposer calls are typically 10-25, projected spend ~$2-8."
+  }
+}

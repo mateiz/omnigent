@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEPA Candidate Tree</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8f9fa; display: flex; flex-direction: column; }
+  #header { background: #fff; border-bottom: 1px solid #dee2e6; padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+  #header h1 { font-size: 18px; font-weight: 600; color: #212529; }
+  .legend { display: flex; gap: 14px; font-size: 13px; color: #495057; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #adb5bd; }
+  #graph-container { flex: 1 1 auto; width: 100%; overflow: auto; padding: 20px; text-align: center; }
+  #graph-container svg { width: 100%; height: 100%; }
+  #tooltip {
+    display: none; position: fixed; background: #fff; border: 1px solid #dee2e6;
+    border-radius: 8px; padding: 14px 16px; max-width: 560px; max-height: 70vh; overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18); z-index: 1000; font-size: 13px; line-height: 1.5;
+  }
+  #tooltip .tt-header { font-weight: 700; font-size: 15px; margin-bottom: 6px; color: #212529; }
+  #tooltip .tt-meta { color: #6c757d; margin-bottom: 4px; }
+  #tooltip .tt-hint { color: #adb5bd; font-size: 11px; font-style: italic; margin-bottom: 10px; }
+  #tooltip .tt-comp-name { font-weight: 600; color: #495057; margin-top: 10px; border-bottom: 1px solid #e9ecef; padding-bottom: 2px; }
+  #tooltip .tt-comp-text {
+    white-space: pre-wrap; word-break: break-word; background: #f8f9fa;
+    border: 1px solid #e9ecef; border-radius: 4px; padding: 8px 10px; margin-top: 4px;
+    font-family: "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+    max-height: 200px; overflow-y: auto;
+  }
+  .role-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+  .role-best { background: #00e5ff33; color: #006064; }
+  .role-pareto { background: #ff980033; color: #e65100; }
+  .role-seed { background: #e0e0e0; color: #424242; }
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>GEPA Candidate Tree</h1>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:cyan"></div> Best</div>
+    <div class="legend-item"><div class="legend-dot" style="background:orange"></div> Pareto Front</div>
+    <div class="legend-item"><div class="legend-dot" style="background:lightgray"></div> Other</div>
+  </div>
+</div>
+<div id="graph-container"><p>Loading graph&hellip;</p></div>
+<div id="tooltip"></div>
+
+<script type="module">
+const NODES = [{"idx": 0, "score": 0.0052, "parents": "seed", "role": "Seed", "components": {"program": "import networkx as nx\nimport pandas as pd\nimport os\nfrom typing import Dict, List\n\n\nclass SingleDstPath(Dict):\n    partition: int\n    edges: List[List]  # [[src, dst, edge data]]\n\n\nclass BroadCastTopology:\n    def __init__(self, src: str, dsts: List[str], num_partitions: int = 4, paths: Dict[str, 'SingleDstPath'] = None):\n        self.src = src\n        self.dsts = dsts\n        self.num_partitions = num_partitions\n        if paths is not None:\n            self.paths = paths\n        else:\n            self.paths = {dst: {str(i): None for i in range(num_partitions)} for dst in dsts}\n\n    def get_paths(self):\n        return self.paths\n\n    def set_num_partitions(self, num_partitions: int):\n        self.num_partitions = num_partitions\n\n    def set_dst_partition_paths(self, dst: str, partition: int, paths: List[List]):\n        partition = str(partition)\n        self.paths[dst][partition] = paths\n\n    def append_dst_partition_path(self, dst: str, partition: int, path: List):\n        partition = str(partition)\n        if self.paths[dst][partition] is None:\n            self.paths[dst][partition] = []\n        self.paths[dst][partition].append(path)\n\n\ndef search_algorithm(src, dsts, G, num_partitions):\n    \"\"\"\n    Find broadcast paths from source to all destinations.\n\n    Uses Dijkstra's shortest path algorithm based on cost as the edge weight.\n\n    Args:\n        src: Source node identifier (e.g., \"aws:ap-northeast-1\")\n        dsts: List of destination node identifiers\n        G: NetworkX DiGraph with cost and throughput edge attributes\n        num_partitions: Number of data partitions\n\n    Returns:\n        BroadCastTopology object with paths for all destinations and partitions\n    \"\"\"\n    h = G.copy()\n    h.remove_edges_from(list(h.in_edges(src)) + list(nx.selfloop_edges(h)))\n    bc_topology = BroadCastTopology(src, dsts, num_partitions)\n\n    for dst in dsts:\n        path = nx.dijkstra_path(h, src, dst, weight=\"cost\")\n        for i in range(0, len(path) - 1):\n            s, t = path[i], path[i + 1]\n            for j in range(bc_topology.num_partitions):\n                bc_topology.append_dst_partition_path(dst, j, [s, t, G[s][t]])\n\n    return bc_topology\n"}},
+{"idx": 1, "score": 0.0075, "parents": "0", "role": "", "components": {"program": "import networkx as nx\nimport pandas as pd\nimport os\nfrom typing import Dict, List\n\n\nclass SingleDstPath(Dict):\n    partition: int\n    edges: List[List]  # [[src, dst, edge data]]\n\n\nclass BroadCastTopology:\n    def __init__(self, src: str, dsts: List[str], num_partitions: int = 4, paths: Dict[str, 'SingleDstPath'] = None):\n        self.src = src\n        self.dsts = dsts\n        self.num_partitions = num_partitions\n        if paths is not None:\n            self.paths = paths\n        else:\n            self.paths = {dst: {str(i): None for i in range(num_partitions)} for dst in dsts}\n\n    def get_paths(self):\n        return self.paths\n\n    def set_num_partitions(self, num_partitions: int):\n        self.num_partitions = num_partitions\n\n    def set_dst_partition_paths(self, dst: str, partition: int, paths: List[List]):\n        partition = str(partition)\n        self.paths[dst][partition] = paths\n\n    def append_dst_partition_path(self, dst: str, partition: int, path: List):\n        partition = str(partition)\n        if self.paths[dst][partition] is None:\n            self.paths[dst][partition] = []\n        self.paths[dst][partition].append(path)\n\n\ndef search_algorithm(src, dsts, G, num_partitions):\n    \"\"\"\n    Find broadcast paths from source to all destinations.\n    \n    Uses a Directed Steiner Tree heuristic (Takahashi-Matsuyama) to minimize total egress cost,\n    while applying a load-based penalty to encourage multipath routing across partitions \n    to balance throughput and reduce transfer time.\n    \"\"\"\n    h = G.copy()\n    h.remove_edges_from(list(h.in_edges(src)) + list(nx.selfloop_edges(h)))\n    bc_topology = BroadCastTopology(src, dsts, num_partitions)\n\n    # Initialize edge loads to track usage across partitions\n    for u, v, d in h.edges(data=True):\n        d['load'] = 0\n\n    for p in range(num_partitions):\n        # Update edge weights: base cost + penalty for load to encourage multipath\n        for u, v, d in h.edges(data=True):\n            c = d.get('cost', 0.0)\n            t = d.get('throughput', 1.0)\n            # Penalty increases with load and decreases with available throughput\n            d['weight'] = c + 0.02 * (d['load'] / max(t, 0.1))\n\n        tree_nodes = {src}\n        remaining_dsts = set(dsts)\n        parent = {}\n        \n        # Greedily grow the broadcast tree\n        while remaining_dsts:\n            dummy = 'DUMMY_SRC'\n            h.add_node(dummy)\n            for tn in tree_nodes:\n                h.add_edge(dummy, tn, weight=0)\n                \n            try:\n                lengths, paths = nx.single_source_dijkstra(h, dummy, weight='weight')\n            except nx.NetworkXNoPath:\n                lengths, paths = {}, {}\n                \n            h.remove_node(dummy)\n            \n            best_dist = float('inf')\n            best_path = None\n            best_dst = None\n            \n            for r_dst in remaining_dsts:\n                if r_dst in lengths and lengths[r_dst] < best_dist:\n                    best_dist = lengths[r_dst]\n                    best_path = paths[r_dst][1:]  # Exclude dummy node\n                    best_dst = r_dst\n                    \n            if best_path is None:\n                break  # Disconnected\n                \n            # Add the chosen path to the tree\n            for i in range(len(best_path) - 1):\n                u, v = best_path[i], best_path[i + 1]\n                if v not in parent:\n                    parent[v] = u\n                    tree_nodes.add(v)\n                    h[u][v]['load'] += 1\n            \n            remaining_dsts.remove(best_dst)\n            \n        # Extract paths from the constructed tree for each destination\n        for dst in dsts:\n            if dst not in parent:\n                # Fallback to direct shortest path if heuristic fails to reach dst\n                try:\n                    path = nx.dijkstra_path(G, src, dst, weight='cost')\n                    edges = [[path[i], path[i+1], G[path[i]][path[i+1]]] for i in range(len(path)-1)]\n                    bc_topology.set_dst_partition_paths(dst, p, edges)\n                except nx.NetworkXNoPath:\n                    pass\n                continue\n                \n            curr = dst\n            path_edges = []\n            while curr != src:\n                p_node = parent[curr]\n                path_edges.append([p_node, curr, G[p_node][curr]])\n                curr = p_node\n            path_edges.reverse()\n            bc_topology.set_dst_partition_paths(dst, p, path_edges)\n\n    return bc_topology"}},
+{"idx": 2, "score": 0.0076, "parents": "1", "role": "Pareto Front", "components": {"program": "import networkx as nx\nimport pandas as pd\nimport os\nfrom typing import Dict, List\n\n\nclass SingleDstPath(Dict):\n    partition: int\n    edges: List[List]  # [[src, dst, edge data]]\n\n\nclass BroadCastTopology:\n    def __init__(self, src: str, dsts: List[str], num_partitions: int = 4, paths: Dict[str, 'SingleDstPath'] = None):\n        self.src = src\n        self.dsts = dsts\n        self.num_partitions = num_partitions\n        if paths is not None:\n            self.paths = paths\n        else:\n            self.paths = {dst: {str(i): None for i in range(num_partitions)} for dst in dsts}\n\n    def get_paths(self):\n        return self.paths\n\n    def set_num_partitions(self, num_partitions: int):\n        self.num_partitions = num_partitions\n\n    def set_dst_partition_paths(self, dst: str, partition: int, paths: List[List]):\n        partition = str(partition)\n        self.paths[dst][partition] = paths\n\n    def append_dst_partition_path(self, dst: str, partition: int, path: List):\n        partition = str(partition)\n        if self.paths[dst][partition] is None:\n            self.paths[dst][partition] = []\n        self.paths[dst][partition].append(path)\n\n\ndef search_algorithm(src, dsts, G, num_partitions):\n    \"\"\"\n    Find broadcast paths from source to all destinations.\n    \n    Uses a Directed Steiner Tree heuristic (Takahashi-Matsuyama) to minimize total egress cost,\n    while applying a load-based penalty to encourage multipath routing across partitions \n    to balance throughput and reduce transfer time.\n    \"\"\"\n    h = G.copy()\n    h.remove_edges_from(list(h.in_edges(src)) + list(nx.selfloop_edges(h)))\n    bc_topology = BroadCastTopology(src, dsts, num_partitions)\n\n    # Initialize edge loads to track usage across partitions\n    for u, v, d in h.edges(data=True):\n        d['load'] = 0\n\n    for p in range(num_partitions):\n        # Update edge weights: base cost + penalty for load + penalty for low throughput\n        for u, v, d in h.edges(data=True):\n            c = d.get('cost', 0.0)\n            t = d.get('throughput', 1.0)\n            # Balance cost and throughput, and penalize heavily used edges\n            d['weight'] = c + 0.05 / max(t, 0.1) + 0.02 * (d['load'] / max(t, 0.1))\n\n        tree_nodes = {src}\n        remaining_dsts = set(dsts)\n        parent = {}\n        \n        # Greedily grow the broadcast tree\n        while remaining_dsts:\n            dummy = 'DUMMY_SRC'\n            h.add_node(dummy)\n            for tn in tree_nodes:\n                h.add_edge(dummy, tn, weight=0)\n                \n            try:\n                lengths, paths = nx.single_source_dijkstra(h, dummy, weight='weight')\n            except nx.NetworkXNoPath:\n                lengths, paths = {}, {}\n                \n            h.remove_node(dummy)\n            \n            best_dist = float('inf')\n            best_path = None\n            best_dst = None\n            \n            for r_dst in remaining_dsts:\n                if r_dst in lengths and lengths[r_dst] < best_dist:\n                    best_dist = lengths[r_dst]\n                    best_path = paths[r_dst][1:]  # Exclude dummy node\n                    best_dst = r_dst\n                    \n            if best_path is None:\n                break  # Disconnected\n                \n            # Add the chosen path to the tree\n            for i in range(len(best_path) - 1):\n                u, v = best_path[i], best_path[i + 1]\n                if v not in parent:\n                    parent[v] = u\n                    tree_nodes.add(v)\n                    h[u][v]['load'] += 1\n            \n            remaining_dsts.remove(best_dst)\n            \n        # Extract paths from the constructed tree for each destination\n        for dst in dsts:\n            if dst not in parent:\n                # Fallback to direct shortest path if heuristic fails to reach dst\n                try:\n                    path = nx.dijkstra_path(G, src, dst, weight='cost')\n                    edges = [[path[i], path[i+1], G[path[i]][path[i+1]]] for i in range(len(path)-1)]\n                    bc_topology.set_dst_partition_paths(dst, p, edges)\n                except nx.NetworkXNoPath:\n                    pass\n                continue\n                \n            curr = dst\n            path_edges = []\n            while curr != src:\n                p_node = parent[curr]\n                path_edges.append([p_node, curr, G[p_node][curr]])\n                curr = p_node\n            path_edges.reverse()\n            bc_topology.set_dst_partition_paths(dst, p, path_edges)\n\n    return bc_topology"}},
+{"idx": 3, "score": 0.0076, "parents": "2", "role": "Best", "components": {"program": "import networkx as nx\nimport pandas as pd\nimport os\nfrom typing import Dict, List\n\n\nclass SingleDstPath(Dict):\n    partition: int\n    edges: List[List]  # [[src, dst, edge data]]\n\n\nclass BroadCastTopology:\n    def __init__(self, src: str, dsts: List[str], num_partitions: int = 4, paths: Dict[str, 'SingleDstPath'] = None):\n        self.src = src\n        self.dsts = dsts\n        self.num_partitions = num_partitions\n        if paths is not None:\n            self.paths = paths\n        else:\n            self.paths = {dst: {str(i): None for i in range(num_partitions)} for dst in dsts}\n\n    def get_paths(self):\n        return self.paths\n\n    def set_num_partitions(self, num_partitions: int):\n        self.num_partitions = num_partitions\n\n    def set_dst_partition_paths(self, dst: str, partition: int, paths: List[List]):\n        partition = str(partition)\n        self.paths[dst][partition] = paths\n\n    def append_dst_partition_path(self, dst: str, partition: int, path: List):\n        partition = str(partition)\n        if self.paths[dst][partition] is None:\n            self.paths[dst][partition] = []\n        self.paths[dst][partition].append(path)\n\n\ndef search_algorithm(src, dsts, G, num_partitions):\n    \"\"\"\n    Find broadcast paths from source to all destinations.\n    \n    Uses a Directed Steiner Tree heuristic (Takahashi-Matsuyama) to minimize total egress cost,\n    while applying a load-based penalty to encourage multipath routing across partitions \n    to balance throughput and reduce transfer time.\n    \"\"\"\n    h = G.copy()\n    h.remove_edges_from(list(h.in_edges(src)) + list(nx.selfloop_edges(h)))\n    bc_topology = BroadCastTopology(src, dsts, num_partitions)\n\n    # Initialize edge loads to track usage across partitions\n    for u, v, d in h.edges(data=True):\n        d['load'] = 0\n\n    for p in range(num_partitions):\n        # Update edge weights: base cost + penalty for load + penalty for low throughput\n        for u, v, d in h.edges(data=True):\n            c = d.get('cost', 0.0)\n            t = d.get('throughput', 1.0)\n            # Heavily weight cost to minimize egress fees, while using throughput and load for tie-breaking and multipath\n            d['weight'] = (c * 1000.0) + (5.0 / max(t, 0.1)) + (10.0 * d['load'] / max(t, 0.1))\n\n        tree_nodes = {src}\n        remaining_dsts = set(dsts)\n        parent = {}\n        \n        # Greedily grow the broadcast tree\n        while remaining_dsts:\n            dummy = 'DUMMY_SRC'\n            h.add_node(dummy)\n            for tn in tree_nodes:\n                h.add_edge(dummy, tn, weight=0)\n                \n            try:\n                lengths, paths = nx.single_source_dijkstra(h, dummy, weight='weight')\n            except nx.NetworkXNoPath:\n                lengths, paths = {}, {}\n                \n            h.remove_node(dummy)\n            \n            best_dist = float('inf')\n            best_path = None\n            best_dst = None\n            \n            for r_dst in remaining_dsts:\n                if r_dst in lengths and lengths[r_dst] < best_dist:\n                    best_dist = lengths[r_dst]\n                    best_path = paths[r_dst][1:]  # Exclude dummy node\n                    best_dst = r_dst\n                    \n            if best_path is None:\n                break  # Disconnected\n                \n            # Add the chosen path to the tree\n            for i in range(len(best_path) - 1):\n                u, v = best_path[i], best_path[i + 1]\n                if v not in parent:\n                    parent[v] = u\n                    tree_nodes.add(v)\n                    h[u][v]['load'] += 1\n            \n            remaining_dsts.remove(best_dst)\n            \n        # Extract paths from the constructed tree for each destination\n        for dst in dsts:\n            if dst not in parent:\n                # Fallback to direct shortest path if heuristic fails to reach dst\n                try:\n                    path = nx.dijkstra_path(G, src, dst, weight='cost')\n                    edges = [[path[i], path[i+1], G[path[i]][path[i+1]]] for i in range(len(path)-1)]\n                    bc_topology.set_dst_partition_paths(dst, p, edges)\n                except nx.NetworkXNoPath:\n                    pass\n                continue\n                \n            curr = dst\n            path_edges = []\n            while curr != src:\n                p_node = parent[curr]\n                path_edges.append([p_node, curr, G[p_node][curr]])\n                curr = p_node\n            path_edges.reverse()\n            bc_topology.set_dst_partition_paths(dst, p, path_edges)\n\n    return bc_topology"}}];
+const DOT = `digraph G {
+    rankdir=TB;
+    node [style=filled, shape=circle, fontsize=14, width=0.6, height=0.6];
+    0 [label="0\\n(0.01)", fillcolor=lightgray, tooltip=" "];
+    1 [label="1\\n(0.01)", fillcolor=lightgray, tooltip=" "];
+    2 [label="2\\n(0.01)", fillcolor=orange, tooltip=" "];
+    3 [label="3\\n(0.01)", fillcolor=cyan, tooltip=" "];
+    0 -> 1;
+    1 -> 2;
+    2 -> 3;
+}`;
+
+const nodeMap = {};
+NODES.forEach(n => { nodeMap[n.idx] = n; });
+
+let pinnedIdx = null;   // non-null when tooltip is click-pinned (scrollable)
+let hoverIdx = null;    // non-null when hovering over a node
+
+function renderTooltip(idx) {
+  const n = nodeMap[idx];
+  if (!n) return "";
+  let roleBadge = "";
+  if (n.role === "Best") roleBadge = '<span class="role-badge role-best">BEST</span>';
+  else if (n.role === "Pareto Front") roleBadge = '<span class="role-badge role-pareto">PARETO</span>';
+  else if (n.role === "Seed") roleBadge = '<span class="role-badge role-seed">SEED</span>';
+
+  let comps = "";
+  for (const [name, text] of Object.entries(n.components)) {
+    const escaped = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    comps += '<div class="tt-comp-name">' + name + '</div><div class="tt-comp-text">' + escaped + '</div>';
+  }
+
+  return '<div class="tt-header">Candidate ' + n.idx + roleBadge + '</div>' +
+    '<div class="tt-meta">Score: <strong>' + n.score + '</strong>&nbsp;&nbsp;|&nbsp;&nbsp;Parent(s): ' + n.parents +
+    '</div><div class="tt-hint">' + (pinnedIdx === idx ? 'Click node again to dismiss' : 'Click to pin &amp; scroll') + '</div>' +
+    comps;
+}
+
+function positionTooltip(x, y) {
+  const tt = document.getElementById("tooltip");
+  let tx = x + 16, ty = y + 16;
+  const r = tt.getBoundingClientRect();
+  if (tx + r.width > window.innerWidth - 8) tx = x - r.width - 16;
+  if (ty + r.height > window.innerHeight - 8) ty = y - r.height - 16;
+  if (tx < 8) tx = 8;
+  if (ty < 8) ty = 8;
+  tt.style.left = tx + "px";
+  tt.style.top = ty + "px";
+}
+
+function showTooltip(idx, x, y) {
+  const tt = document.getElementById("tooltip");
+  tt.innerHTML = renderTooltip(idx);
+  tt.style.display = "block";
+  positionTooltip(x, y);
+}
+
+function hideTooltip() {
+  pinnedIdx = null;
+  hoverIdx = null;
+  document.getElementById("tooltip").style.display = "none";
+}
+
+// Click outside tooltip and outside nodes dismisses pinned tooltip
+document.addEventListener("mousedown", function(e) {
+  const tt = document.getElementById("tooltip");
+  if (pinnedIdx !== null && tt.style.display === "block"
+      && !tt.contains(e.target) && !e.target.closest(".node")) {
+    hideTooltip();
+  }
+});
+
+async function render() {
+  const { instance } = await import("https://cdn.jsdelivr.net/npm/@viz-js/viz@3.11.0/lib/viz-standalone.mjs");
+  const viz = await instance();
+  const svg = viz.renderSVGElement(DOT);
+  const container = document.getElementById("graph-container");
+  container.innerHTML = "";
+  container.appendChild(svg);
+
+  // Attach hover listeners and strip native <title> tooltips to avoid double tooltips
+  svg.querySelectorAll(".node").forEach(node => {
+    const title = node.querySelector("title");
+    if (!title) return;
+    const idx = parseInt(title.textContent, 10);
+    if (isNaN(idx)) return;
+    title.remove();  // remove native SVG tooltip
+    node.style.cursor = "pointer";
+    // Hover: show tooltip following the mouse (non-interactive)
+    node.addEventListener("mouseenter", e => {
+      if (pinnedIdx !== null) return;  // don't override a pinned tooltip
+      hoverIdx = idx;
+      showTooltip(idx, e.clientX, e.clientY);
+    });
+    node.addEventListener("mousemove", e => {
+      if (pinnedIdx !== null || hoverIdx !== idx) return;
+      positionTooltip(e.clientX, e.clientY);
+    });
+    node.addEventListener("mouseleave", () => {
+      if (pinnedIdx !== null) return;
+      hoverIdx = null;
+      document.getElementById("tooltip").style.display = "none";
+    });
+    // Click: pin the tooltip so user can scroll it
+    node.addEventListener("click", e => {
+      e.stopPropagation();
+      if (pinnedIdx === idx) { hideTooltip(); return; }
+      pinnedIdx = idx;
+      showTooltip(idx, e.clientX, e.clientY);
+    });
+  });
+  // Also strip <title> from edges and the graph itself
+  svg.querySelectorAll(".edge title").forEach(t => t.remove());
+  const graphTitle = svg.querySelector(":scope > title");
+  if (graphTitle) graphTitle.remove();
+}
+
+render().catch(err => {
+  document.getElementById("graph-container").innerHTML =
+    "<p style='color:red'>Failed to render graph: " + err.message + "</p>" +
+    "<pre>" + DOT.replace(/</g,"&lt;") + "</pre>";
+});
+</script>
+</body>
+</html>
