@@ -1,0 +1,54 @@
+# EXAMPLE: Intent-Based Authorization (IBA).
+#
+# On the FIRST prompt of a session, an LLM reads the user's request and writes
+# CEL scope rules for what future tool calls are "in intent". Those rules are
+# cached in the policy's session_state and replayed deterministically on every
+# later Google Workspace MCP and shell tool call: in-scope -> ALLOW,
+# out-of-scope -> ASK the user for approval.
+#
+# WHAT TO TRY
+# -----------
+# Start the session with a scoped intent, e.g.:
+#
+#   python -m omnigent examples/intent_based_authorization/agent.yaml \
+#       --prompt "Make a Google Slides presentation about Lakebase, then run
+#                 `git status` and push the result with `git push`."
+#
+# The generated rules should ALLOW the Google Slides/Docs/Drive MCP calls and
+# read-only shell (`git status`), but `git push` (and things like `gh pr create`)
+# fall outside "make a presentation", so the policy ASKs you to approve them.
+#
+# NOTE: The policy's rule generator uses the SERVER-LEVEL LLM client, so the
+# server must be started with an `llm:` config block (see README.md). With no
+# `llm:` config the policy abstains (fail open) and nothing is gated.
+
+name: intent_authz_agent
+prompt: |
+  You are an assistant with Google Workspace tools and a shell. Carry out the
+  user's request using those tools. If a tool call is gated and the user is
+  asked to approve it, explain that it was escalated by the Intent-Based
+  Authorization policy because it fell outside the intent captured at the start
+  of the session.
+
+executor:
+  harness: openai-agents
+  model: databricks-gpt-5-4-mini
+  auth:
+    type: databricks
+    profile: oss
+
+tools:
+  # Point this at your Google Workspace MCP server. The IBA policy matches
+  # Google tools by their name prefix (mcp__google__* / google__*), so no
+  # server-specific configuration is needed here. The built-in shell tool
+  # (sys_os_shell) and native Bash are gated by name and need no declaration.
+  google:
+    type: mcp
+    command: npx
+    args: ["-y", "@your-org/google-mcp-server"]
+
+policies:
+  # Zero required params — attach it as-is.
+  intent_authz:
+    type: function
+    handler: omnigent.policies.builtins.intent_authz.intent_based_authorization
