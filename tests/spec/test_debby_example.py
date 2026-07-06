@@ -93,3 +93,15 @@ def test_debby_claude_head_unchanged() -> None:
     assert by_name["claude"].executor.harness_kind == "claude-sdk", (
         "Debby's Claude head should remain on the 'claude-sdk' harness."
     )
+
+
+def test_debby_enables_native_web_search() -> None:
+    """Debby and her Claude head opt into the native WebSearch tool."""
+    spec = parse(_DEBBY_DIR)
+    assert spec.enable_web_search is True, (
+        "Debby (claude-sdk orchestrator) should opt into native web search."
+    )
+    by_name = {sub.name: sub for sub in spec.sub_agents}
+    assert by_name["claude"].enable_web_search is True, (
+        "Debby's Claude head should opt into native web search."
+    )

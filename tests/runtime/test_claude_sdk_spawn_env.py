@@ -243,3 +243,30 @@ def test_ucode_state_with_model_is_not_overridden_by_default(
     env = _build_claude_sdk_spawn_env(spec, workdir=None)
 
     assert env["HARNESS_CLAUDE_SDK_MODEL"] == "databricks-claude-sonnet-4-6"
+
+
+def test_enable_web_search_sets_env_var_when_opted_in() -> None:
+    """
+    ``spec.enable_web_search=True`` sets
+    ``HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH=1``.
+
+    Failure means the harness wrap never learns the agent opted into
+    native web search and the ``WebSearch`` tool stays off.
+    """
+    spec = _make_spec()
+    spec.enable_web_search = True
+    env = _build_claude_sdk_spawn_env(spec, workdir=None)
+
+    assert env["HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH"] == "1"
+
+
+def test_enable_web_search_env_var_omitted_by_default() -> None:
+    """
+    A spec that doesn't opt in leaves the env var unset so the harness
+    wrap defaults native web search to off (opt-in only).
+    """
+    spec = _make_spec()
+    assert spec.enable_web_search is False
+    env = _build_claude_sdk_spawn_env(spec, workdir=None)
+
+    assert "HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH" not in env

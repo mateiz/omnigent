@@ -1352,6 +1352,121 @@ class TestSkillsFilterTranslation(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
+class TestNativeWebSearchOption(unittest.TestCase):
+    """``enable_web_search`` wires Anthropic's native WebSearch tool."""
+
+    def _run_and_capture(self, *, enable_web_search: bool) -> dict:
+        """Run one turn and capture the SDK options the executor built.
+
+        Returns the captured ``{"tools", "allowed_tools"}`` dict.
+        """
+        from omnigent.inner.claude_sdk_executor import ClaudeSDKExecutor
+        from omnigent.inner.datamodel import OSEnvSandboxSpec, OSEnvSpec
+
+        captured_options: dict = {}
+
+        class _ResultMessage:
+            def __init__(self, session_id, result):
+                self.session_id = session_id
+                self.result = result
+
+        class _FakeSDK:
+            AssistantMessage = type("AssistantMessage", (), {})
+            UserMessage = type("UserMessage", (), {})
+            SystemMessage = type("SystemMessage", (), {})
+            ResultMessage = _ResultMessage
+            StreamEvent = type("StreamEvent", (), {})
+            ClaudeAgentOptions = type(
+                "ClaudeAgentOptions",
+                (),
+                {"__init__": lambda self, **kwargs: self.__dict__.update(kwargs)},
+            )
+            messages: list = []
+
+            @staticmethod
+            def tool(name, desc, params):
+                def decorator(handler):
+                    return type(
+                        "Tool",
+                        (),
+                        {
+                            "name": name,
+                            "description": desc,
+                            "parameters": params,
+                            "handler": handler,
+                        },
+                    )()
+
+                return decorator
+
+            @staticmethod
+            def create_sdk_mcp_server(**kwargs):
+                return kwargs
+
+            class ClaudeSDKClient:
+                def __init__(self, options):
+                    captured_options["tools"] = getattr(options, "tools", None)
+                    captured_options["allowed_tools"] = getattr(options, "allowed_tools", None)
+
+                async def connect(self):
+                    return None
+
+                async def query(self, prompt, session_id="default"):
+                    _FakeSDK.messages = [_ResultMessage(session_id, "done")]
+
+                async def receive_response(self):
+                    for message in _FakeSDK.messages:
+                        yield message
+
+                async def disconnect(self):
+                    return None
+
+        async def _t():
+            executor = ClaudeSDKExecutor(
+                os_env=OSEnvSpec(
+                    type="caller_process",
+                    sandbox=OSEnvSandboxSpec(type="none"),
+                ),
+                enable_web_search=enable_web_search,
+            )
+            with patch("omnigent.inner.claude_sdk_executor._ensure_sdk", return_value=_FakeSDK):
+                events = [
+                    e
+                    async for e in executor.run_turn(
+                        [{"role": "user", "content": "hi", "session_id": "session-a"}],
+                        [
+                            {
+                                "name": "sleep",
+                                "description": "sleep",
+                                "parameters": {"type": "object"},
+                            }
+                        ],
+                        "",
+                    )
+                ]
+            self.assertIsInstance(events[-1], TurnComplete)
+
+        _run(_t())
+        return captured_options
+
+    def test_websearch_included_when_enabled(self):
+        captured = self._run_and_capture(enable_web_search=True)
+        # WebSearch must be in the BASE set (so the model sees it) and
+        # pre-approved in allowed_tools (so it runs without a gate).
+        self.assertIn("WebSearch", captured["tools"])
+        self.assertIn("WebSearch", captured["allowed_tools"])
+        # The existing Skill base tool and Omnigent MCP tools are untouched.
+        self.assertIn("Skill", captured["tools"])
+        self.assertIn("mcp__omnigent__sleep", captured["allowed_tools"])
+
+    def test_websearch_absent_by_default(self):
+        captured = self._run_and_capture(enable_web_search=False)
+        self.assertNotIn("WebSearch", captured["tools"])
+        self.assertNotIn("WebSearch", captured["allowed_tools"])
+        # Default base set is unchanged.
+        self.assertEqual(captured["tools"], ["Skill"])
+
+
 class TestStreamEventStreaming(unittest.TestCase):
     def test_live_clients_are_reused_per_omnigent_session(self):
         from omnigent.inner.claude_sdk_executor import ClaudeSDKExecutor

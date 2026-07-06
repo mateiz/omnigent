@@ -1139,6 +1139,12 @@ def agent_def_to_agent_spec(
     # spec-side parser does so a typo here surfaces the same
     # error regardless of which spec format the user is on.
     skills_filter = _translate_skills_filter_from_yaml(raw_yaml)
+    # Top-level ``enable_web_search:`` — same omnigent-spec config
+    # story as ``skills:`` above: the omnigent loader doesn't carry
+    # it on ``AgentDef`` (it controls Claude SDK harness tool
+    # exposure, not an omnigent runtime concept), so re-read it from
+    # the raw YAML.
+    enable_web_search = _translate_enable_web_search_from_yaml(raw_yaml)
 
     return AgentSpec(
         spec_version=_SYNTHETIC_SPEC_VERSION,
@@ -1160,6 +1166,7 @@ def agent_def_to_agent_spec(
         # AgentSpec expects.
         agent_session_sharing=SharePolicy(agent_def.agent_session_sharing),
         skills_filter=skills_filter,
+        enable_web_search=enable_web_search,
     )
 
 
@@ -1221,6 +1228,37 @@ def _translate_skills_filter_from_yaml(
         f"names; got {type(raw).__name__}",
         code=ErrorCode.INVALID_INPUT,
     )
+
+
+def _translate_enable_web_search_from_yaml(
+    raw_yaml: dict[str, Any] | None,
+) -> bool:
+    """
+    Pull the top-level YAML ``enable_web_search:`` flag from a raw
+    omnigent-format YAML mapping.
+
+    Like ``skills:``, the omnigent loader does not carry this field
+    on :class:`AgentDef` — it's omnigent-spec config controlling the
+    Claude SDK harness's native ``WebSearch`` tool exposure — so it
+    is re-read from the raw YAML here.
+
+    :param raw_yaml: The raw parsed YAML mapping. ``None`` → ``False``.
+    :returns: The boolean flag; ``False`` by default.
+    :raises OmnigentError: When the value is present but not a
+        boolean.
+    """
+    if raw_yaml is None:
+        return False
+    raw = raw_yaml.get("enable_web_search")
+    if raw is None:
+        return False
+    if not isinstance(raw, bool):
+        raise OmnigentError(
+            f"top-level enable_web_search: must be a boolean (true/false); "
+            f"got {type(raw).__name__} {raw!r}",
+            code=ErrorCode.INVALID_INPUT,
+        )
+    return raw
 
 
 def _self_agent_tool_to_sub_spec(

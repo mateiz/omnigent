@@ -38,6 +38,23 @@ def test_parse_minimal(agent_dir: Path) -> None:
     assert spec.sub_agents == []
 
 
+def test_parse_enable_web_search_defaults_false(agent_dir: Path) -> None:
+    assert parse(agent_dir).enable_web_search is False
+
+
+def test_parse_enable_web_search_true(tmp_path: Path) -> None:
+    config = {"spec_version": 1, "name": "t", "enable_web_search": True}
+    (tmp_path / "config.yaml").write_text(yaml.dump(config))
+    assert parse(tmp_path).enable_web_search is True
+
+
+def test_parse_enable_web_search_non_bool_raises(tmp_path: Path) -> None:
+    config = {"spec_version": 1, "name": "t", "enable_web_search": "yes"}
+    (tmp_path / "config.yaml").write_text(yaml.dump(config))
+    with pytest.raises(OmnigentError, match=r"enable_web_search: must be a boolean"):
+        parse(tmp_path)
+
+
 def test_parse_missing_config_yaml(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match=r"config.yaml not found"):
         parse(tmp_path)

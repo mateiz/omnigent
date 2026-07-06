@@ -1515,6 +1515,13 @@ class AgentSpec:  # type: ignore[explicit-any]  # params: dict[str, Any] field (
     # filter — agents that want to suppress bundled skills do so by
     # not shipping them, not by setting this filter to ``"none"``.
     skills_filter: str | list[str] = "all"
+    # Opt-in: expose the harness model's OWN native web-search tool
+    # (in addition to any shell / MCP tools). Maps from the top-level
+    # YAML ``enable_web_search:`` key. Consumed by the Claude SDK
+    # harness, which adds Anthropic's native ``WebSearch`` tool to the
+    # SDK's base + allowed tool set when set. Other harnesses ignore
+    # it. Defaults to ``False`` — no behavior change unless opted in.
+    enable_web_search: bool = False
     mcp_servers: list[MCPServerConfig] = field(default_factory=list)
     local_tools: list[LocalToolInfo] = field(default_factory=list)
     sub_agents: list[AgentSpec] = field(default_factory=list)

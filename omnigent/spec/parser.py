@@ -229,6 +229,7 @@ def parse(root: Path, *, expand_env: bool = True) -> AgentSpec:
     instructions = _resolve_instructions(root, raw_instructions)
     skills = _discover_skills(root / "skills")
     skills_filter = _parse_skills_filter(raw.get("skills"))
+    enable_web_search = _parse_enable_web_search(raw.get("enable_web_search"))
     mcp_servers = _discover_mcp_servers(root / "tools" / "mcp", expand_env=expand_env)
     mcp_servers = mcp_servers + _parse_inline_mcp_servers(raw_tools, expand_env=expand_env)
     local_tools = _discover_local_tools(root / "tools")
@@ -248,6 +249,7 @@ def parse(root: Path, *, expand_env: bool = True) -> AgentSpec:
         instructions=instructions,
         skills=skills,
         skills_filter=skills_filter,
+        enable_web_search=enable_web_search,
         mcp_servers=mcp_servers,
         local_tools=local_tools,
         sub_agents=sub_agents,
@@ -1776,6 +1778,32 @@ def _parse_share_policy(raw: object) -> SharePolicy:
             f"top-level agent_session_sharing: must be one of {valid}; got {raw!r}",
             code=ErrorCode.INVALID_INPUT,
         ) from None
+
+
+def _parse_enable_web_search(raw: object) -> bool:
+    """
+    Parse the top-level YAML ``enable_web_search:`` flag.
+
+    Opt-in switch that exposes the harness model's OWN native
+    web-search tool (the Claude SDK harness adds Anthropic's
+    native ``WebSearch`` tool). Field omitted / ``null`` → ``False``.
+
+    :param raw: The raw YAML value (already parsed). ``None`` or a
+        boolean.
+    :returns: The boolean flag; ``False`` by default.
+    :raises OmnigentError: When the value is present but not a
+        boolean (e.g. a string or integer) so typos fail loud
+        rather than silently reading as falsey.
+    """
+    if raw is None:
+        return False
+    if not isinstance(raw, bool):
+        raise OmnigentError(
+            f"top-level enable_web_search: must be a boolean (true/false); "
+            f"got {type(raw).__name__} {raw!r}",
+            code=ErrorCode.INVALID_INPUT,
+        )
+    return raw
 
 
 def _parse_skills_filter(raw: object) -> str | list[str]:

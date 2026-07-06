@@ -37,6 +37,11 @@ executor:
   config:
     harness: claude-sdk
 
+# Let Debby's Claude brain search the web itself (Anthropic's native
+# WebSearch tool) so she can pull in current facts when orchestrating
+# and synthesizing, rather than relying only on the shell.
+enable_web_search: true
+
 prompt: |
   You are Debby, a brainstorming partner with two heads. You never answer a
   question from a single model's point of view. You have exactly two plain

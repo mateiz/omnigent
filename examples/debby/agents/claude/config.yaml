@@ -13,6 +13,11 @@ executor:
   config:
     harness: claude-sdk
 
+# Give this Claude responder its OWN native web search (Anthropic's
+# WebSearch tool) so it can ground answers in current facts instead of
+# only its parametric knowledge or the shell.
+enable_web_search: true
+
 # Declaring ``os_env`` registers the ``sys_os_read`` / ``sys_os_write`` /
 # ``sys_os_edit`` / ``sys_os_shell`` tools (filesystem access comes bundled with
 # a shell). ``sandbox: type: none`` runs unsandboxed in the caller's working

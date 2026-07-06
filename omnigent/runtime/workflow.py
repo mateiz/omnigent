@@ -1217,6 +1217,12 @@ def _build_claude_sdk_spawn_env(
         ):
             env["HARNESS_CLAUDE_SDK_GATEWAY"] = "true"
     _add_claude_sdk_skills_env(env, spec, workdir)
+    # Native web search: opt-in flag adds Anthropic's ``WebSearch``
+    # tool to the SDK's base + allowed tool set. Only set the env var
+    # when enabled — the harness wrap defaults to off on a missing
+    # var, so omitting it preserves the no-opt-in default.
+    if spec.enable_web_search:
+        env["HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH"] = "1"
     # OS env: enabling this in the inner ClaudeSDKExecutor is
     # what gates the SDK-native ``Bash/Read/Edit/Write/Glob/Grep``
     # tools. The legacy non-AP path enables them by default

@@ -68,6 +68,12 @@ Env vars read at startup:
   pair that suppresses both host-discovered (user/project)
   skills and the SDK's auto-default of
   ``setting_sources=["user","project"]``.
+- ``HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH``: ``"1"`` / ``"true"``
+  / ``"yes"`` (case-insensitive) to add Anthropic's native
+  ``WebSearch`` tool to the SDK's base + allowed tool set, so the
+  model can search the web itself. Carries the spec's top-level
+  ``enable_web_search:`` flag. Unset / any other value keeps it
+  off (opt-in; no behavior change for agents that don't set it).
 - ``HARNESS_CLAUDE_SDK_BUNDLE_DIR``: Absolute path to the
   agent bundle's extracted root. When set, the inner executor
   passes ``plugins=[{"type": "local", "path": <bundle_dir>}]``
@@ -112,6 +118,7 @@ _ENV_PERMISSION_MODE = "HARNESS_CLAUDE_SDK_PERMISSION_MODE"
 _ENV_OS_ENV = "HARNESS_CLAUDE_SDK_OS_ENV"
 _ENV_RETRY_POLICY = "HARNESS_CLAUDE_SDK_RETRY_POLICY"
 _ENV_SKILLS_FILTER = "HARNESS_CLAUDE_SDK_SKILLS_FILTER"
+_ENV_ENABLE_WEB_SEARCH = "HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH"
 _ENV_BUNDLE_DIR = "HARNESS_CLAUDE_SDK_BUNDLE_DIR"
 _ENV_AGENT_NAME = "HARNESS_CLAUDE_SDK_AGENT_NAME"
 _ENV_GATEWAY_BASE_URL = "HARNESS_CLAUDE_SDK_GATEWAY_BASE_URL"
@@ -250,6 +257,21 @@ def _resolve_skills_filter() -> str | list[str]:
     return "all"
 
 
+def _resolve_enable_web_search() -> bool:
+    """
+    Resolve the inner-executor ``enable_web_search`` flag from env.
+
+    Reads :data:`_ENV_ENABLE_WEB_SEARCH` and treats the truthy
+    strings ``"1"`` / ``"true"`` / ``"yes"`` (case-insensitive)
+    as enabled. When the env var is missing or any other value,
+    falls back to ``False`` — native web search is opt-in, so a
+    missing/unrecognized value must not enable it.
+
+    :returns: ``True`` when the spec opted into native web search.
+    """
+    return os.environ.get(_ENV_ENABLE_WEB_SEARCH, "").strip().lower() in ("1", "true", "yes")
+
+
 def _build_claude_sdk_executor() -> Executor:
     """
     Construct a :class:`ClaudeSDKExecutor` from env-var config.
@@ -288,6 +310,7 @@ def _build_claude_sdk_executor() -> Executor:
         agent_name=agent_name,
         skills_filter=_resolve_skills_filter(),
         api_key_helper=os.environ.get(_ENV_API_KEY_HELPER) or None,
+        enable_web_search=_resolve_enable_web_search(),
     )
 
 

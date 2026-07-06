@@ -1096,6 +1096,7 @@ class ClaudeSDKExecutor(Executor):
         agent_name: str | None = None,
         skills_filter: str | list[str] = "all",
         api_key_helper: str | None = None,
+        enable_web_search: bool = False,
     ) -> None:
         """Create a ClaudeSDKExecutor.
 
@@ -1169,6 +1170,14 @@ class ClaudeSDKExecutor(Executor):
                 Injected into ``_extra_env`` as
                 :data:`_CLAUDE_API_KEY_HELPER_ENV_KEY` so it reaches
                 the SDK's ``settings.apiKeyHelper`` option at turn time.
+            enable_web_search: Opt-in flag that adds Anthropic's native
+                ``WebSearch`` tool to the SDK's base + allowed tool set,
+                so the model can search the web itself instead of only
+                through Omnigent's shell / MCP tools. Defaults to
+                ``False`` — no behavior change for agents that don't set
+                it. Maps from the spec's top-level ``enable_web_search:``
+                key (threaded via
+                ``HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH``).
         """
         # Fail loud: a ``databricks-*`` model requires the gateway transport.
         if not gateway and model is not None and model.startswith("databricks-"):
@@ -1195,6 +1204,7 @@ class ClaudeSDKExecutor(Executor):
         self._bundle_dir = bundle_dir
         self._agent_name = agent_name
         self._skills_filter = skills_filter
+        self._enable_web_search = enable_web_search
         # Write the bundle's plugin manifest now (idempotent) so that
         # ``--plugin-dir <bundle>`` produces clean
         # ``<agent-name>:<skill-name>`` labels in Claude's skill
@@ -1900,6 +1910,11 @@ class ClaudeSDKExecutor(Executor):
                 if not isinstance(raw_tname, str) or not raw_tname:
                     continue
                 allowed_tools.append(f"mcp__omnigent__{raw_tname}")
+            # Pre-approve native WebSearch too so the model can search
+            # autonomously without a per-call consent gate, matching the
+            # MCP-tool pre-approval above.
+            if self._enable_web_search:
+                allowed_tools.append("WebSearch")
 
         # cfg.model > spec model > Databricks default (only on the
         # Databricks-profile gateway path) > None (lets the SDK pick its own
@@ -1962,6 +1977,13 @@ class ClaudeSDKExecutor(Executor):
         # SDK's native Bash/Read/Edit/Write.  Only the Skill tool
         # needs to be in the SDK's base set.
         base_tools: list[str] = ["Skill"]
+        # Opt-in: expose Anthropic's native ``WebSearch`` tool. Like
+        # ``Skill``, it has to be in the BASE set (``tools``) for the
+        # model to see it at all — ``allowed_tools`` only auto-approves
+        # it. ``"WebSearch"`` is the Claude Code CLI's built-in tool
+        # name the SDK forwards verbatim (see the CLI's tool registry).
+        if self._enable_web_search:
+            base_tools.append("WebSearch")
         # Translate the spec's host-skill filter into the SDK
         # options. Falls back to ``"all"`` semantics when the
         # field is malformed (the parser already validates, so

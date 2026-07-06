@@ -443,3 +443,65 @@ def test_bundle_dir_unset_passes_none(
 
     assert captured["bundle_dir"] is None
     assert captured["agent_name"] is None
+
+
+@pytest.mark.parametrize(
+    ("env_value", "expected"),
+    [
+        ("1", True),
+        ("true", True),
+        ("TRUE", True),
+        ("yes", True),
+        ("0", False),
+        ("false", False),
+        ("", False),
+    ],
+)
+def test_executor_factory_reads_enable_web_search(
+    monkeypatch: pytest.MonkeyPatch,
+    env_value: str,
+    expected: bool,
+) -> None:
+    """``HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH`` threads to the executor.
+
+    Truthy values (``1`` / ``true`` / ``yes``, case-insensitive) enable
+    native web search; everything else (including an empty / unset var)
+    keeps it off — the opt-in default.
+    """
+    if env_value:
+        monkeypatch.setenv("HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH", env_value)
+    else:
+        monkeypatch.delenv("HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH", raising=False)
+
+    captured: dict[str, Any] = {}
+
+    def _fake_init(self: Any, *, enable_web_search: bool, **_kwargs: Any) -> None:
+        captured["enable_web_search"] = enable_web_search
+
+    with patch(
+        "omnigent.inner.claude_sdk_harness.ClaudeSDKExecutor.__init__",
+        _fake_init,
+    ):
+        claude_sdk_harness._build_claude_sdk_executor()
+
+    assert captured["enable_web_search"] is expected
+
+
+def test_executor_factory_enable_web_search_defaults_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing env var leaves native web search off (opt-in only)."""
+    monkeypatch.delenv("HARNESS_CLAUDE_SDK_ENABLE_WEB_SEARCH", raising=False)
+
+    captured: dict[str, Any] = {}
+
+    def _fake_init(self: Any, *, enable_web_search: bool, **_kwargs: Any) -> None:
+        captured["enable_web_search"] = enable_web_search
+
+    with patch(
+        "omnigent.inner.claude_sdk_harness.ClaudeSDKExecutor.__init__",
+        _fake_init,
+    ):
+        claude_sdk_harness._build_claude_sdk_executor()
+
+    assert captured["enable_web_search"] is False
