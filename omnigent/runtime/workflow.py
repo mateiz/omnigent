@@ -1310,6 +1310,17 @@ def _build_codex_spawn_env(
     # set so the harness wrap doesn't fall back to its ``"all"``
     # default and override an explicit ``skills: none`` spec.
     env["HARNESS_CODEX_SKILLS_FILTER"] = json.dumps(spec.skills_filter)
+    # Native web_search opt-in. ``web_search: live`` (or ``cached`` /
+    # ``disabled``) in the spec's ``executor.config`` threads through as
+    # ``HARNESS_CODEX_WEB_SEARCH``; the harness turns it into a per-invocation
+    # ``-c web_search="<mode>"`` override so Codex's native web_search tool
+    # fires even over the Databricks gateway. A bare ``true`` maps to ``live``.
+    web_search_cfg = spec.executor.config.get("web_search")
+    if web_search_cfg is not None:
+        if isinstance(web_search_cfg, bool):
+            env["HARNESS_CODEX_WEB_SEARCH"] = "live" if web_search_cfg else "disabled"
+        else:
+            env["HARNESS_CODEX_WEB_SEARCH"] = str(web_search_cfg)
     if spec.name:
         env["HARNESS_CODEX_AGENT_NAME"] = spec.name
     if workdir is not None:

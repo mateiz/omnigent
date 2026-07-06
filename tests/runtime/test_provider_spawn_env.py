@@ -96,6 +96,7 @@ def _make_spec(
     profile: str | None = None,
     auth: ApiKeyAuth | DatabricksAuth | ProviderAuth | None = None,
     os_env: object | None = None,
+    web_search: object | None = None,
 ) -> AgentSpec:
     """
     Build a minimal :class:`AgentSpec` for a given harness.
@@ -114,6 +115,8 @@ def _make_spec(
         config["model"] = model
     if profile is not None:
         config["profile"] = profile
+    if web_search is not None:
+        config["web_search"] = web_search
     return AgentSpec(
         spec_version=1,
         name=f"test-{harness}",
@@ -971,6 +974,41 @@ def test_legacy_profile_suppresses_global_default_provider(config_home: Path) ->
     # The legacy profile wins; the global-default provider is not consulted.
     assert env["HARNESS_CODEX_DATABRICKS_PROFILE"] == "legacy-profile"
     assert "HARNESS_CODEX_GATEWAY_BASE_URL" not in env
+
+
+def test_codex_web_search_string_threads_to_env(config_home: Path) -> None:
+    """``executor.config.web_search: live`` → ``HARNESS_CODEX_WEB_SEARCH=live``.
+
+    This is the spec-driven opt-in for Codex's native web_search tool. The
+    string value passes through verbatim so the harness can inject the matching
+    ``-c web_search="live"`` config override.
+    """
+    _write_config(config_home, {})
+    spec = _make_spec(harness="codex", model="some-model", web_search="live")
+
+    env = _build_codex_spawn_env(spec, workdir=None)
+
+    assert env["HARNESS_CODEX_WEB_SEARCH"] == "live"
+
+
+def test_codex_web_search_bool_maps_to_live(config_home: Path) -> None:
+    """A bare ``web_search: true`` maps to the ``live`` mode."""
+    _write_config(config_home, {})
+    spec = _make_spec(harness="codex", model="some-model", web_search=True)
+
+    env = _build_codex_spawn_env(spec, workdir=None)
+
+    assert env["HARNESS_CODEX_WEB_SEARCH"] == "live"
+
+
+def test_codex_web_search_absent_emits_no_env(config_home: Path) -> None:
+    """A spec that never sets ``web_search`` emits no ``HARNESS_CODEX_WEB_SEARCH``."""
+    _write_config(config_home, {})
+    spec = _make_spec(harness="codex", model="some-model")
+
+    env = _build_codex_spawn_env(spec, workdir=None)
+
+    assert "HARNESS_CODEX_WEB_SEARCH" not in env
 
 
 def test_codex_spec_databricks_auth_routes_via_synthesized_provider(config_home: Path) -> None:

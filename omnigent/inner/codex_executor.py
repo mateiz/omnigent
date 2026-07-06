@@ -97,6 +97,11 @@ _TURN_COMPLETED_DRAIN_SECONDS = 1.0
 _CODEX_VERSION_PROBE_TIMEOUT_SECONDS = 5.0
 _STDERR_CHUNK_LIMIT = 65536
 _STREAM_READ_CHUNK_SIZE = 65536
+# Values Codex's top-level ``web_search`` config key accepts. ``"live"``
+# lets the model issue live web queries, ``"cached"`` serves cached results
+# only, ``"disabled"`` turns the native tool off. Any other value is rejected
+# so a typo surfaces as a clear error rather than a silently-ignored override.
+_CODEX_WEB_SEARCH_MODES = ("disabled", "cached", "live")
 _OPENAI_CODEX_DEFAULT_MODEL = "gpt-5.4-mini"
 # Databricks-specific default model for the Databricks-profile-derivation
 # gateway path (no gateway base URL supplied directly). The neutral
@@ -2030,6 +2035,7 @@ class CodexExecutor(Executor):
         gateway_auth_command: str | None = None,
         gateway_auth_refresh_interval_ms: str | None = None,
         enable_web_search: bool = True,
+        web_search_mode: str | None = None,
         disable_native_tools: bool = False,
         retry_policy: RetryPolicy | None = None,
         bundle_dir: Path | None = None,
@@ -2082,6 +2088,15 @@ class CodexExecutor(Executor):
         :param enable_web_search: Leave Codex's built-in ``web_search`` tool
             enabled.  Set ``False`` to force the model to use only
             Omnigent-bridged tools.
+        :param web_search_mode: Explicit value for Codex's top-level
+            ``web_search`` config key — one of ``"live"``, ``"cached"``, or
+            ``"disabled"``. When set, emitted as a per-invocation
+            ``-c web_search="<mode>"`` override, which makes Codex's native
+            web_search tool fire even over a gateway provider whose
+            ``~/.codex/config.toml`` leaves ``web_search`` disabled. The
+            user's ``~/.codex/config.toml`` is never mutated. Takes
+            precedence over *enable_web_search*. ``None`` (default) falls
+            back to the *enable_web_search* behavior.
         :param disable_native_tools: When True, disable supported native
             Codex tools for the turn.
         :param retry_policy: The spec's ``llm.retry`` budget. Threads
@@ -2120,6 +2135,12 @@ class CodexExecutor(Executor):
             gateway_auth_refresh_interval_ms
         )
         self._enable_web_search = enable_web_search
+        if web_search_mode is not None and web_search_mode not in _CODEX_WEB_SEARCH_MODES:
+            raise OSError(
+                f"CodexExecutor received web_search_mode={web_search_mode!r}; "
+                f"expected one of {_CODEX_WEB_SEARCH_MODES}."
+            )
+        self._web_search_mode = web_search_mode
         self._disable_native_tools = disable_native_tools
         self._bundle_dir = bundle_dir
         self._agent_name = agent_name
@@ -2227,11 +2248,17 @@ class CodexExecutor(Executor):
                     auth_refresh_interval_ms=self._gateway_auth_refresh_interval_ms,
                 )
             )
-        if not enable_web_search:
-            # Disable Codex's built-in web_search tool so the model can only reach
-            # tools exposed by Omnigent as dynamicTools. The top-level web_search
-            # key accepts "live", "cached", or "disabled".
-            self._codex_config_overrides.append('web_search="disabled"')
+        # Resolve the single value for Codex's top-level ``web_search`` key.
+        # An explicit mode wins; otherwise ``enable_web_search=False`` disables
+        # the native tool. When neither applies we emit nothing and leave
+        # Codex's own default (from the bridged config.toml) in place. This is
+        # a per-invocation ``-c`` override — the user's ~/.codex/config.toml is
+        # never mutated.
+        web_search_value = self._web_search_mode
+        if web_search_value is None and not enable_web_search:
+            web_search_value = "disabled"
+        if web_search_value is not None:
+            self._codex_config_overrides.append(f"web_search={json.dumps(web_search_value)}")
         self._tool_executor: CodexToolExecutor | None = None
         self._session_states: dict[str, _CodexSessionState] = {}
         self._app_session_factory: _AppSessionFactory = (

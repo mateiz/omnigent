@@ -204,6 +204,71 @@ class TestCodexExecutor(unittest.TestCase):
         self.assertNotIn("RUST_LOG", executor._env)
         self.assertNotIn("RUST_BACKTRACE", executor._env)
 
+    def test_web_search_mode_live_injects_config_override(self):
+        """``web_search_mode="live"`` emits a per-invocation -c override.
+
+        This is the opt-in that makes Codex's native web_search tool fire even
+        over a gateway provider whose config.toml leaves it disabled. The
+        override is a config string only — the user's ~/.codex/config.toml is
+        never touched.
+        """
+        with (
+            patch("omnigent.inner.codex_executor._find_codex_cli", return_value="/usr/bin/codex"),
+            patch.dict("os.environ", {}, clear=True),
+        ):
+            executor = CodexExecutor(web_search_mode="live")
+        self.assertIn('web_search="live"', executor._codex_config_overrides)
+
+    def test_web_search_mode_unset_emits_no_override(self):
+        """Default construction leaves ``web_search`` untouched.
+
+        With no explicit mode and web_search enabled (the default), the
+        executor emits no ``web_search`` override, so Codex keeps whatever its
+        bridged config.toml specifies.
+        """
+        with (
+            patch("omnigent.inner.codex_executor._find_codex_cli", return_value="/usr/bin/codex"),
+            patch.dict("os.environ", {}, clear=True),
+        ):
+            executor = CodexExecutor()
+        self.assertFalse(
+            any(o.startswith("web_search=") for o in executor._codex_config_overrides)
+        )
+
+    def test_web_search_mode_takes_precedence_over_enable_flag(self):
+        """An explicit mode wins over ``enable_web_search=False``.
+
+        Only the explicit mode is emitted — no conflicting duplicate
+        ``web_search`` override from the disable path.
+        """
+        with (
+            patch("omnigent.inner.codex_executor._find_codex_cli", return_value="/usr/bin/codex"),
+            patch.dict("os.environ", {}, clear=True),
+        ):
+            executor = CodexExecutor(web_search_mode="live", enable_web_search=False)
+        web_search_overrides = [
+            o for o in executor._codex_config_overrides if o.startswith("web_search=")
+        ]
+        self.assertEqual(web_search_overrides, ['web_search="live"'])
+
+    def test_enable_web_search_false_still_disables_without_mode(self):
+        """``enable_web_search=False`` disables the tool when no mode is set."""
+        with (
+            patch("omnigent.inner.codex_executor._find_codex_cli", return_value="/usr/bin/codex"),
+            patch.dict("os.environ", {}, clear=True),
+        ):
+            executor = CodexExecutor(enable_web_search=False)
+        self.assertIn('web_search="disabled"', executor._codex_config_overrides)
+
+    def test_web_search_mode_invalid_raises(self):
+        """An unsupported mode fails loud rather than being silently ignored."""
+        with (
+            patch("omnigent.inner.codex_executor._find_codex_cli", return_value="/usr/bin/codex"),
+            patch.dict("os.environ", {}, clear=True),
+        ):
+            with self.assertRaises(OSError):
+                CodexExecutor(web_search_mode="enabled")
+
     def test_constructor_databricks_flag_with_profile_uses_profile_credentials(self):
         with (
             patch("omnigent.inner.codex_executor._find_codex_cli", return_value="/usr/bin/codex"),

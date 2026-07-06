@@ -46,6 +46,15 @@ Env vars read at startup:
   leave Codex's built-in ``web_search`` tool enabled. ``"0"`` /
   ``"false"`` disables it (forces the model to use only
   AP-bridged tools). Default: ``True``.
+- ``HARNESS_CODEX_WEB_SEARCH``: explicit value for Codex's
+  top-level ``web_search`` config key — ``"live"``, ``"cached"``,
+  or ``"disabled"``. When set, the executor injects a
+  per-invocation ``-c web_search="<mode>"`` override so Codex's
+  native web_search tool fires even over a gateway provider whose
+  ``~/.codex/config.toml`` leaves it disabled (the user's config
+  is never mutated). Takes precedence over
+  ``HARNESS_CODEX_ENABLE_WEB_SEARCH``. Unset leaves that flag's
+  behavior in force.
 - ``HARNESS_CODEX_DISABLE_NATIVE_TOOLS``: ``"1"`` / ``"true"``
   to disable Codex's native tools entirely for the turn.
   Default: ``False``.
@@ -111,6 +120,7 @@ _ENV_GATEWAY_HOST = "HARNESS_CODEX_GATEWAY_HOST"
 _ENV_CWD = "HARNESS_CODEX_CWD"
 _ENV_CODEX_PATH = "HARNESS_CODEX_PATH"
 _ENV_ENABLE_WEB_SEARCH = "HARNESS_CODEX_ENABLE_WEB_SEARCH"
+_ENV_WEB_SEARCH = "HARNESS_CODEX_WEB_SEARCH"
 _ENV_DISABLE_NATIVE_TOOLS = "HARNESS_CODEX_DISABLE_NATIVE_TOOLS"
 _ENV_OS_ENV = "HARNESS_CODEX_OS_ENV"
 _ENV_RETRY_POLICY = "HARNESS_CODEX_RETRY_POLICY"
@@ -296,6 +306,10 @@ def _build_codex_executor() -> Executor:
         # default. An operator who set the env var to ``"0"``
         # wants the search disabled.
         enable_web_search=_parse_truthy(_ENV_ENABLE_WEB_SEARCH, default=True),
+        # Explicit ``web_search`` mode ("live"/"cached"/"disabled"). When set,
+        # the executor injects a per-invocation ``-c web_search="<mode>"``
+        # override and it wins over ``enable_web_search``. ``None`` when unset.
+        web_search_mode=os.environ.get(_ENV_WEB_SEARCH) or None,
         # Default ``False`` mirrors the inner executor's default
         # (native tools enabled).
         disable_native_tools=_parse_truthy(_ENV_DISABLE_NATIVE_TOOLS, default=False),

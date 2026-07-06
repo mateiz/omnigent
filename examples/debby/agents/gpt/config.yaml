@@ -20,6 +20,12 @@ executor:
   type: omnigent
   config:
     harness: codex
+    # Turn on Codex's NATIVE web_search tool for this head. The codex harness
+    # injects this as a per-invocation ``-c web_search="live"`` override (it
+    # never edits the user's ~/.codex/config.toml), so real web_search_call
+    # events fire even when routed over the Databricks AI Gateway. Accepts
+    # ``live`` / ``cached`` / ``disabled`` (or ``true`` → ``live``).
+    web_search: live
 
 # Declaring ``os_env`` registers the ``sys_os_read`` / ``sys_os_write`` /
 # ``sys_os_edit`` / ``sys_os_shell`` tools (filesystem access comes bundled with

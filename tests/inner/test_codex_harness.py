@@ -315,6 +315,46 @@ def test_enable_web_search_default_is_true(
 @pytest.mark.parametrize(
     "raw_value,expected",
     [
+        ("live", "live"),
+        ("cached", "cached"),
+        ("disabled", "disabled"),
+        # Unset threads through as None so the wrap falls back to the
+        # ``enable_web_search`` flag behavior.
+        ("", None),
+    ],
+)
+def test_web_search_mode_threads_from_env(
+    raw_value: str,
+    expected: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``HARNESS_CODEX_WEB_SEARCH`` threads through as ``web_search_mode``.
+
+    This is the opt-in that makes Codex's native web_search tool fire over a
+    gateway provider. When unset it must be ``None`` so the wrap doesn't force
+    a mode onto agents that never asked for one.
+    """
+    if raw_value:
+        monkeypatch.setenv("HARNESS_CODEX_WEB_SEARCH", raw_value)
+    else:
+        monkeypatch.delenv("HARNESS_CODEX_WEB_SEARCH", raising=False)
+    captured: dict[str, Any] = {}
+
+    def _fake_init(self: Any, **kwargs: Any) -> None:
+        captured.update(kwargs)
+
+    with patch(
+        "omnigent.inner.codex_harness.CodexExecutor.__init__",
+        _fake_init,
+    ):
+        codex_harness._build_codex_executor()
+
+    assert captured["web_search_mode"] == expected
+
+
+@pytest.mark.parametrize(
+    "raw_value,expected",
+    [
         ("1", True),
         ("true", True),
         ("0", False),
